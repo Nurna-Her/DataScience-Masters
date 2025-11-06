@@ -1,0 +1,215 @@
+---
+title: "PEC2 - Visualización de datos"
+author: "Nuria Heredia"
+date: "2025-04-11"
+output: html_document
+header-includes:
+   - \usepackage{tabularx}
+   - \usepackage{float}
+---
+
+Librerias utilizadas durante la práctica:
+```{r, message=FALSE}
+library(dplyr)
+library(readr)
+library(lubridate)
+library(ggplot2)
+library(knitr)
+library(corrplot)
+library(plotly)
+library(tidyverse)
+```
+
+En primer lugar cargamos los datos que hemos generado a partir del preprocesado en preprocess.ipybn y los examinamos brevemente para comprobar que son correctos.
+
+```{r}
+df <- read_csv("../data/weatherAUS_clean.csv", show_col_types = FALSE)
+
+cat("Información general del dataset:\n")
+glimpse(df)
+```
+
+## Gráfico de líneas
+
+Para el primer gráfico, el gráfico de líneas, he decidido representar la temperatura promedio mensual de cada año del dataset.
+
+Fuente: https://plotly.com/r/line-charts/
+
+```{r fig.width=8, fig.height=8, warning=FALSE}
+month_levels <- c("Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec")
+
+df$month <- factor(df$month, levels = month_levels, ordered = TRUE)
+
+df <- df %>% arrange(year, month)
+
+df$year <- as.numeric(df$year)
+
+years <- sort(unique(df$year))
+num_years <- length(years)
+color_palette <- colorRampPalette(c("yellow", "red"))(num_years)
+
+fig <- plot_ly(type = "scatter", mode = "lines+markers")
+
+for (i in seq_along(years)) {
+  year_i <- years[i]
+  year_data <- df %>% filter(year == year_i)
+  
+  marker_color <- adjustcolor(color_palette[i], red.f = 0.8, green.f = 0.8, blue.f = 0.8)
+
+  fig <- fig %>%
+    add_trace(
+      data = year_data,
+      x = ~month,
+      y = ~avg_temp,
+      name = as.character(year_i),
+      line = list(color = color_palette[i], width = 4),
+      marker = list(size = 6, symbol = "circle", color = marker_color)
+    )
+}
+
+fig <- fig %>%
+  layout(
+    title = "Monthly Average Temperatures by Year (Sydney)",
+    xaxis = list(title = "Month"),
+    yaxis = list(title = "Temperature (°C)"),
+    legend = list(title = list(text = "Year"))
+  )
+
+fig
+```
+
+## Gráfico de Nightingale
+
+Gráfico de Nightingale original, en el que se comparan las causas de muerte de los soldados:
+![Gráfico de Nightingale original](C:\Users\Usuario\Downloads\Nightingale-mortality.jpg)
+
+
+Para el segundo gráfico, el Nightingale-Rose, utilizaré los datos de horas de sol promedio de cada estación.
+
+Fuente: http://andrewtrick.com/coffee_rose.html
+
+```{r fig.width=8, fig.height=8, warning=FALSE}
+
+df_seasonal <- df %>%
+  group_by(year, season) %>%
+  summarise(avg_sunshine = mean(avg_sunshine, na.rm = TRUE)) %>%
+  ungroup()
+
+df_seasonal$season <- factor(df_seasonal$season,
+                             levels = c("Winter", "Autumn", "Spring", "Summer"),
+                             ordered = TRUE)
+
+# --- Diagrama de Nightingale (por año y estación) ---
+p <- ggplot(df_seasonal, aes(x = as.factor(year), y = avg_sunshine, fill = season)) +
+  geom_bar(stat = "identity", width = 1, color = "white", alpha = 0.9) +
+  coord_polar(start = 0) +
+  theme_minimal() +
+  scale_fill_manual(values = colorRampPalette(c("#FFF59D", "#FFB300", "#F57C00", "#E65100"))(4)) +
+  theme(
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 9, face = "bold"),
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Seasonal Nightingale Chart: Average Sunshine by Year",
+    subtitle = "Each bar segment represents a season (Summer, Autumn, Winter, Spring)",
+    fill = "Season"
+  )
+
+p
+
+```
+
+## Gráfico Rose - Wind Rose
+
+Ejemplo de gráfico de rosa de vientos:
+![Ejemplo de gráfico de rosa de vientos](C:\Users\Usuario\Downloads\Wind_rose_plot.jpg)
+
+
+Para el gráfico radial de barras, he escogido representar la lluvia media de cada mes, en mm.
+
+Fuente: https://r-graph-gallery.com/297-circular-barplot-with-groups.html
+
+```{r fig.width=10, fig.height=10, warning=FALSE}
+
+month_levels <- c("Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec")
+
+df$month <- factor(df$month, levels = month_levels, ordered = TRUE)
+
+df <- df %>% arrange(year, month)
+
+data <- df %>%
+  rename(group = year, value = avg_rainfall) %>%
+  arrange(group, month) %>% 
+  mutate(individual = month)
+
+empty_bar <- 3
+to_add <- data.frame(matrix(NA, empty_bar * nlevels(as.factor(data$group)), ncol(data)))
+colnames(to_add) <- colnames(data)
+to_add$group <- rep(levels(as.factor(data$group)), each = empty_bar)
+data <- rbind(data, to_add)
+# data <- data %>% arrange(group, desc(value)) # En caso de ordenar por tamaño, ranking de meses
+data <- data %>% arrange(group, month)
+data$id <- seq(1, nrow(data))
+
+label_data <- data
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id - 0.5) / number_of_bar
+label_data$hjust <- ifelse(angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle + 180, angle)
+
+base_data <- data %>%
+  filter(!is.na(group)) %>%
+  group_by(group) %>%
+  summarize(start = min(id), end = max(id) - empty_bar) %>%
+  rowwise() %>%
+  mutate(title = mean(c(start, end)))
+
+grid_values <- seq(0, max(data$value, na.rm = TRUE), length.out = 5)[-1] 
+grid_data <- base_data
+grid_data$end <- grid_data$end[c(nrow(grid_data), 1:(nrow(grid_data)-1))] + 1
+grid_data$start <- grid_data$start - 1
+grid_data <- grid_data[-1,]
+
+# --- GRAFICAR ---
+p <- ggplot(data, aes(x=as.factor(id), y=value, fill=group)) +       
+  
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.8) +
+  
+  geom_segment(data=grid_data, aes(x = end, y = 0, xend = start, yend = 0), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 2.5, xend = start, yend = 2.5), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 5, xend = start, yend = 5), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 7.5, xend = start, yend = 7.5), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 10, xend = start, yend = 10), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  
+  annotate("text", x = rep(max(data$id),5), y = c(0, 2.5, 5, 7.5, 10), label = c("0", "2.5", "5", "7.5", "10") , color="grey", size=3 , angle=0, fontface="bold", hjust=1) +
+  
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.8) +
+  ylim(-10,11) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1, 1, 1, 1), "cm")
+  ) +
+  scale_fill_manual(values = colorRampPalette(c("#cce5ff", "#003366"))(length(unique(data$group)))) +
+  coord_polar() + 
+  geom_text(data=label_data, aes(x=id, y=value+1, label=individual, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) +
+  
+  geom_segment(data=base_data, aes(x = start, y = -1, xend = end, yend = -1), colour = "black", alpha=0.8, size=0.6 , inherit.aes = FALSE )  +
+  geom_text(data=base_data, aes(x = title, y = -3, label=group), hjust=c(1,1,0,0), colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE) +
+  labs(
+    title = "Anual Polar Bar Chart: Average Monthly Rainfall by Year",
+    subtitle = "in average monthly mm."
+  )
+
+p
+```
+
+
