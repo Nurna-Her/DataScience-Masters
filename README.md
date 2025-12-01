@@ -11,8 +11,6 @@
 > Colección de algunos de los proyectos y ejercicios prácticos desarrollados durante la realización de mi Máster en Ciencia de Datos. 
 > Se cubren las distintas fases del ciclo de la ciencia de datos: recopilación, limpieza, análisis, modelado estadístico, visualización y aplicaciones de aprendizaje automático.
 
----
-
 ### 📌 Acerca de
 Este repositorio contiene un conjunto de algunos de los proyectos y ejercicios desarrollados como parte de mi Máster en Ciencia de Datos. El trabajo abarca múltiples asignaturas y demuestra diferentes etapas del flujo de trabajo en ciencia de datos:
 
