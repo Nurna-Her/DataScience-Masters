@@ -43,8 +43,15 @@ html, body { /** Debug hero img **/
 }
 
 .empty-space {
-  height: 100vh; 
+  background:
+    linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+    url("../assets/images/gaza.avif") center / cover no-repeat;
+  height: 100vh;
+  width: 100vw;
+  justify-self: center;
+  margin-top: 15rem;
 }
+
 
 /** Hero Section **/
 .hero {
@@ -103,7 +110,7 @@ html, body { /** Debug hero img **/
 
 /** Text Sections **/
 .text-section {
-  margin: 2em 0;
+  margin-top: 4em;
   font-size: 1.2rem;
   text-align: center;
 }
@@ -160,7 +167,7 @@ html, body { /** Debug hero img **/
 
 /* bloque derecho img */
 .image-side {
-  max-width: 260px;
+  max-width: 200px;
   text-align: left;
 }
 
@@ -171,11 +178,15 @@ html, body { /** Debug hero img **/
 }
 
 .side-text {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: var(--color-text-secondary);
   line-height: 1.4;
 }
-
+.side-text-highlight {
+  font-size: 1.2rem;
+  color: var(--color-red-bright);
+  line-height: 1.4;
+}
 
 /** Charts **/
 .bar-chart {
